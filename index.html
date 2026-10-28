@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-900 text-slate-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>ML Studio AI - Editor Profesional de Productos</title>
+  
+  <!-- Manifest Meta para PWA -->
+  <link rel="manifest" id="manifest-placeholder">
+  <meta name="theme-color" content="#ffe600">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ML Studio AI">
+
+  <!-- Favicon Generado en SVG -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23ffe600'/><path d='M25 68 L50 32 L75 68 Z' fill='%232d3277'/><circle cx='50' cy='45' r='12' fill='%23ffffff'/><path d='M35 75 L65 75' stroke='%232d3277' stroke-width='6' stroke-linecap='round'/></svg>">
+
+  <!-- Tailwind CSS y FontAwesome -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Configuración de Fuentes -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    /* Estilos personalizados para controles slider */
+    input[type=range] {
+      accent-color: #2563eb;
+    }
+    .checkerboard {
+      background-color: #f1f5f9;
+      background-image: linear-gradient(45deg, #cbd5e1 25%, transparent 25%), linear-gradient(-45deg, #cbd5e1 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #cbd5e1 75%), linear-gradient(-45deg, transparent 75%, #cbd5e1 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col overflow-hidden select-none bg-slate-950 text-slate-100">
+
+  <!-- Header principal -->
+  <header class="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 sm:px-6 z-20 shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-yellow-400 flex items-center justify-center text-slate-900 shadow-lg shadow-yellow-500/20 font-extrabold text-xl">
+        <i class="fa-solid fa-bag-shopping"></i>
+      </div>
+      <div>
+        <h1 class="font-bold text-base sm:text-lg leading-tight flex items-center gap-2">
+          ML Studio AI
+          <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-400/10 text-yellow-400 border border-yellow-400/20">Pro Mercado Libre</span>
+        </h1>
+        <p class="text-xs text-slate-400 hidden sm:block">Editor de fotos de producto optimizado con IA</p>
+      </div>
+    </div>
+
+    <!-- Botones de Acción Superior -->
+    <div class="flex items-center gap-2 sm:gap-3">
+      <button id="btnApiKey" onclick="openApiModal()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs sm:text-sm font-medium border border-slate-700 transition flex items-center gap-2 text-slate-200">
+        <i class="fa-solid fa-key text-yellow-400"></i>
+        <span id="apiKeyStatusText" class="hidden sm:inline">Configurar API Key</span>
+      </button>
+
+      <button id="btnDownload" onclick="exportImage()" disabled class="px-4 py-2 rounded-lg bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 text-xs sm:text-sm font-bold shadow-lg shadow-yellow-400/20 transition flex items-center gap-2">
+        <i class="fa-solid fa-download"></i>
+        <span>Exportar (1200px)</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Área Principal -->
+  <div class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+
+    <!-- Canvas Central / Visor de Previsualización -->
+    <main class="flex-1 bg-slate-950 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      
+      <!-- Guía de Normas de Mercado Libre -->
+      <div class="absolute top-4 left-4 z-10 bg-slate-900/90 backdrop-blur border border-slate-800 px-3 py-1.5 rounded-lg text-xs flex items-center gap-2 text-slate-300">
+        <i class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span>Fondo Blanco Puro (255,255,255) | 1200x1200px</span>
+      </div>
+
+      <!-- Indicador de Carga / IA pensando -->
+      <div id="aiLoader" class="hidden absolute inset-0 z-30 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center gap-4 text-center p-6">
+        <div class="relative w-20 h-20 flex items-center justify-center">
+          <div class="absolute inset-0 rounded-full border-4 border-yellow-400/20 border-t-yellow-400 animate-spin"></div>
+          <i class="fa-solid fa-wand-magic-sparkles text-2xl text-yellow-400 animate-pulse"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-slate-100">Procesando imagen con IA...</h3>
+          <p class="text-sm text-slate-400 max-w-sm mt-1">Eliminando fondo del producto y puliendo bordes para calidad Mercado Libre.</p>
+        </div>
+      </div>
+
+      <!-- Contenedor del Canvas -->
+      <div id="canvasContainer" class="relative max-w-full max-h-full aspect-square shadow-2xl rounded-lg overflow-hidden border border-slate-800 bg-white flex items-center justify-center">
+        <!-- Canvas Interactivo -->
+        <canvas id="mainCanvas" class="max-w-full max-h-full object-contain cursor-grab active:cursor-grabbing"></canvas>
+
+        <!-- Placeholder Inicial si no hay foto -->
+        <div id="dropZone" onclick="document.getElementById('fileInput').click()" class="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center p-6 text-center cursor-pointer hover:bg-slate-800/80 transition group border-2 border-dashed border-slate-700 hover:border-yellow-400/50">
+          <div class="w-16 h-16 rounded-full bg-slate-800 group-hover:bg-yellow-400/10 flex items-center justify-center text-slate-400 group-hover:text-yellow-400 transition mb-4">
+            <i class="fa-solid fa-cloud-arrow-up text-2xl"></i>
+          </div>
+          <h3 class="font-bold text-lg text-slate-200 group-hover:text-yellow-400 transition">Sube la foto de tu producto</h3>
+          <p class="text-sm text-slate-400 mt-1 max-w-xs">Arrastra aquí una imagen o haz clic para explorar en tu dispositivo</p>
+          <span class="mt-4 text-xs bg-slate-800 px-3 py-1 rounded-full text-slate-400 border border-slate-700">Formatos recomendados: JPG, PNG, WEBP</span>
+        </div>
+      </div>
+
+      <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleFileSelect(event)">
+    </main>
+
+    <!-- Panel Lateral de Herramientas y Ajustes -->
+    <aside class="w-full md:w-80 lg:w-96 bg-slate-900 border-t md:border-t-0 md:border-l border-slate-800 flex flex-col shrink-0 h-1/2 md:h-full z-10">
+      
+      <!-- Pestañas de Navegación -->
+      <div class="flex border-b border-slate-800 bg-slate-900/50">
+        <button id="tabIa" onclick="switchTab('ia')" class="flex-1 py-3 px-4 text-xs font-semibold text-yellow-400 border-b-2 border-yellow-400 flex items-center justify-center gap-2">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+          <span>Eliminar Fondo</span>
+        </button>
+        <button id="tabAjustes" onclick="switchTab('ajustes')" class="flex-1 py-3 px-4 text-xs font-semibold text-slate-400 border-b-2 border-transparent hover:text-slate-200 flex items-center justify-center gap-2">
+          <i class="fa-solid fa-sliders"></i>
+          <span>Ajuste Profesional</span>
+        </button>
+      </div>
+
+      <!-- Contenido Pestaña 1: Remover Fondo con IA -->
+      <div id="contentIa" class="p-4 sm:p-6 space-y-5 overflow-y-auto flex-1">
+        
+        <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700/50 space-y-3">
+          <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-robot text-yellow-400"></i>
+            Remoción Automática IA
+          </h4>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Utiliza el modelo inteligente **Gemini** para identificar el objeto principal, aislarlo completamente y dejarlo sobre un fondo blanco puro sin imperfecciones.
+          </p>
+
+          <button id="btnProcessIa" onclick="processWithGemini()" disabled class="w-full py-3 rounded-lg bg-yellow-400 hover:bg-yellow-300 text-slate-900 font-bold text-sm shadow-lg shadow-yellow-400/10 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+            <i class="fa-solid fa-bolt"></i>
+            <span>Borrador de Fondo con Gemini</span>
+          </button>
+        </div>
+
+        <!-- Opciones de Fondo -->
+        <div class="space-y-3">
+          <label class="text-xs font-bold text-slate-300 uppercase tracking-wider">Modo de Fondo</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="setBackgroundMode('white')" id="bgBtnWhite" class="py-2.5 px-3 rounded-lg bg-slate-800 border-2 border-yellow-400 text-xs font-semibold flex items-center gap-2 text-white">
+              <span class="w-4 h-4 rounded-full bg-white border border-slate-300"></span>
+              Fondo Blanco ML
+            </button>
+            <button onclick="setBackgroundMode('transparent')" id="bgBtnTrans" class="py-2.5 px-3 rounded-lg bg-slate-800 border-2 border-transparent text-xs font-semibold flex items-center gap-2 text-slate-300">
+              <span class="w-4 h-4 rounded-full checkerboard border border-slate-600"></span>
+              Transparente
+            </button>
+          </div>
+        </div>
+
+        <!-- Margen de Seguridad ML -->
+        <div class="bg-slate-800/40 p-3.5 rounded-xl border border-slate-700/40 space-y-2">
+          <div class="flex justify-between items-center">
+            <label class="text-xs font-medium text-slate-300">Encuadre Normativa Mercado Libre</label>
+            <span class="text-xs text-yellow-400 font-bold">15% Margen</span>
+          </div>
+          <p class="text-[11px] text-slate-400">Mercado libre requiere que el producto no toque los bordes de la imagen para una mejor visualización.</p>
+          <button onclick="autoFitML()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 rounded-lg border border-slate-700 transition">
+            <i class="fa-solid fa-expand text-yellow-400 mr-1"></i> Auto-Ajustar a la Norma
+          </button>
+        </div>
+      </div>
+
+      <!-- Contenido Pestaña 2: Ajustes de Edición -->
+      <div id="contentAjustes" class="p-4 sm:p-6 space-y-5 overflow-y-auto flex-1 hidden">
+        
+        <!-- Sombra Realista de Producto -->
+        <div class="space-y-3 bg-slate-800/40 p-3.5 rounded-xl border border-slate-700/40">
+          <div class="flex justify-between items-center">
+            <label class="text-xs font-bold text-slate-300 uppercase tracking-wider">Sombra de Base Realista</label>
+            <input type="checkbox" id="shadowToggle" onchange="renderCanvas()" class="w-4 h-4 rounded text-yellow-400 focus:ring-yellow-400 bg-slate-800 border-slate-600" checked>
+          </div>
+          
+          <div class="space-y-2">
+            <div class="flex justify-between text-xs text-slate-400">
+              <span>Opacidad de la sombra</span>
+              <span id="shadowOpacityVal">30%</span>
+            </div>
+            <input type="range" id="shadowOpacity" min="0" max="100" value="30" oninput="updateSliderVal('shadowOpacityVal', this.value + '%'); renderCanvas()" class="w-full">
+          </div>
+
+          <div class="space-y-2">
+            <div class="flex justify-between text-xs text-slate-400">
+              <span>Difuminado / Suavidad</span>
+              <span id="shadowBlurVal">25px</span>
+            </div>
+            <input type="range" id="shadowBlur" min="5" max="60" value="25" oninput="updateSliderVal('shadowBlurVal', this.value + 'px'); renderCanvas()" class="w-full">
+          </div>
+        </div>
+
+        <!-- Ajustes de Imagen (Brillo / Contraste) -->
+        <div class="space-y-4">
+          <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Corrección de Color y Luz</h4>
+          
+          <div class="space-y-1.5">
+            <div class="flex justify-between text-xs text-slate-400">
+              <span>Brillo</span>
+              <span id="brightnessVal">100%</span>
+            </div>
+            <input type="range" id="brightness" min="50" max="150" value="100" oninput="updateSliderVal('brightnessVal', this.value + '%'); renderCanvas()" class="w-full">
+          </div>
+
+          <div class="space-y-1.5">
+            <div class="flex justify-between text-xs text-slate-400">
+              <span>Contraste</span>
+              <span id="contrastVal">100%</span>
+            </div>
+            <input type="range" id="contrast" min="50" max="150" value="100" oninput="updateSliderVal('contrastVal', this.value + '%'); renderCanvas()" class="w-full">
+          </div>
+
+          <div class="space-y-1.5">
+            <div class="flex justify-between text-xs text-slate-400">
+              <span>Saturación</span>
+              <span id="saturateVal">100%</span>
+            </div>
+            <input type="range" id="saturate" min="0" max="200" value="100" oninput="updateSliderVal('saturateVal', this.value + '%'); renderCanvas()" class="w-full">
+          </div>
+        </div>
+
+        <!-- Tamaño y Posición -->
+        <div class="space-y-3 border-t border-slate-800 pt-4">
+          <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Escala y Posición</h4>
+          
+          <div class="space-y-1.5">
+            <div class="flex justify-between text-xs text-slate-400">
+              <span>Tamaño de Producto</span>
+              <span id="scaleVal">80%</span>
+            </div>
+            <input type="range" id="scale" min="20" max="120" value="80" oninput="updateSliderVal('scaleVal', this.value + '%'); renderCanvas()" class="w-full">
+          </div>
+
+          <button onclick="resetTransform()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 rounded-lg transition">
+            Reestablecer Posición y Tamaño
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Footer Info -->
+      <div class="p-3 bg-slate-950 border-t border-slate-800 text-center">
+        <p class="text-[11px] text-slate-500">Cumple con las guías de fotografías de Mercado Libre 2026</p>
+      </div>
+
+    </aside>
+  </div>
+
+  <!-- Modal para Configuración de API Key -->
+  <div id="apiModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl relative">
+      
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-yellow-400/10 text-yellow-400 flex items-center justify-center">
+            <i class="fa-solid fa-key text-lg"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-100">API Key de Gemini</h3>
+            <p class="text-xs text-slate-400">Requerida para la función de remoción de fondo con IA</p>
+          </div>
+        </div>
+        <button onclick="closeApiModal()" class="text-slate-400 hover:text-white transition">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3">
+        <p class="text-xs text-slate-300 leading-relaxed">
+          Tu llave se almacena exclusivamente en tu navegador y no se envía a servidores de terceros.
+        </p>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Clave de API de Google Gemini</label>
+          <input type="password" id="apiKeyInput" placeholder="AIzaSy..." class="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-yellow-400">
+        </div>
+
+        <div class="bg-slate-950 p-3 rounded-lg border border-slate-800/80 text-[11px] text-slate-400 space-y-1">
+          <p class="font-semibold text-slate-300">¿Cómo conseguir tu API Key gratis?</p>
+          <ol class="list-decimal pl-4 space-y-1">
+            <li>Ingresa a <a href="https://aistudio.google.com/" target="_blank" class="text-yellow-400 hover:underline">Google AI Studio</a>.</li>
+            <li>Inicia sesión con tu cuenta de Google.</li>
+            <li>Haz clic en **"Get API key"** y crea una llave.</li>
+            <li>Cópiala y pégala en este campo.</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="flex gap-3 pt-2">
+        <button onclick="saveApiKey()" class="flex-1 py-2.5 bg-yellow-400 hover:bg-yellow-300 text-slate-900 font-bold text-sm rounded-lg shadow-lg shadow-yellow-400/10 transition">
+          Guardar Configuración
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Script Lógico Principal -->
+  <script>
+    // Variables de Estado de la Aplicación
+    let currentImage = null; // Objeto Image cargado original
+    let processedImage = null; // Objeto Image después de remoción de fondo
+    let canvas, ctx;
+    
+    // Estado de Edición
+    let state = {
+      bgMode: 'white', // 'white' | 'transparent'
+      scale: 0.8,
+      posX: 0,
+      posY: 0,
+      brightness: 100,
+      contrast: 100,
+      saturate: 100,
+      shadowEnabled: true,
+      shadowOpacity: 0.3,
+      shadowBlur: 25,
+      apiKey: ''
+    };
+
+    // Estado para arrastrar la imagen en el canvas
+    let isDragging = false;
+    let startX = 0, startY = 0;
+
+    // Inicialización al cargar el DOM
+    window.onload = function() {
+      canvas = document.getElementById('mainCanvas');
+      ctx = canvas.getContext('2d');
+      
+      // Ajustar tamaño estándar de Mercado Libre (1200x1200px)
+      canvas.width = 1200;
+      canvas.height = 1200;
+
+      // Cargar API Key previa si existe
+      state.apiKey = localStorage.getItem('ml_studio_gemini_key') || '';
+      updateApiKeyStatus();
+
+      // Configurar eventos para arrastrar y soltar
+      setupDragAndDrop();
+      setupCanvasInteractions();
+
+      // Configuración Manifest dinámico para la PWA
+      setupPwaManifest();
+
+      // Registrar Service Worker dinámico para GitHub Pages
+      registerGitHubPagesSW();
+
+      // Dibujar canvas inicial
+      renderCanvas();
+    };
+
+    // PWA Manifest dinámico compatible con GitHub Pages y subdirectorios
+    function setupPwaManifest() {
+      const manifest = {
+        name: "Mercado Libre Studio AI",
+        short_name: "ML Studio",
+        start_url: "./",
+        scope: "./",
+        display: "standalone",
+        background_color: "#0f172a",
+        theme_color: "#ffe600",
+        icons: [{
+          src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23ffe600'/><path d='M25 68 L50 32 L75 68 Z' fill='%232d3277'/><circle cx='50' cy='45' r='12' fill='%23ffffff'/><path d='M35 75 L65 75' stroke='%232d3277' stroke-width='6' stroke-linecap='round'/></svg>",
+          sizes: "512x512",
+          type: "image/svg+xml"
+        }]
+      };
+      const stringManifest = JSON.stringify(manifest);
+      const blob = new Blob([stringManifest], {type: 'application/json'});
+      const manifestURL = URL.createObjectURL(blob);
+      document.getElementById('manifest-placeholder').setAttribute('href', manifestURL);
+    }
+
+    // Registro de Service Worker para soporte PWA en GitHub Pages sin archivos separados
+    function registerGitHubPagesSW() {
+      if ('serviceWorker' in navigator) {
+        const swCode = `
+          const CACHE_NAME = 'ml-studio-v1';
+          self.addEventListener('install', (e) => {
+            self.skipWaiting();
+          });
+          self.addEventListener('activate', (e) => {
+            e.waitUntil(clients.claim());
+          });
+          self.addEventListener('fetch', (e) => {
+            // Caché pasivo para GitHub Pages
+            e.respondWith(
+              caches.match(e.request).then((res) => res || fetch(e.request))
+            );
+          });
+        `;
+        const blob = new Blob([swCode], { type: 'text/javascript' });
+        const swUrl = URL.createObjectURL(blob);
+        navigator.serviceWorker.register(swUrl, { scope: './' }).catch(err => {
+          console.log('SW no registrado:', err);
+        });
+      }
+    }
+
+    // Modal de API Key
+    function openApiModal() {
+      document.getElementById('apiKeyInput').value = state.apiKey;
+      document.getElementById('apiModal').classList.remove('hidden');
+    }
+
+    function closeApiModal() {
+      document.getElementById('apiModal').classList.add('hidden');
+    }
+
+    function saveApiKey() {
+      const key = document.getElementById('apiKeyInput').value.trim();
+      state.apiKey = key;
+      localStorage.setItem('ml_studio_gemini_key', key);
+      updateApiKeyStatus();
+      closeApiModal();
+    }
+
+    function updateApiKeyStatus() {
+      const btnText = document.getElementById('apiKeyStatusText');
+      if (state.apiKey) {
+        btnText.textContent = "API Key Lista";
+        btnText.classList.add("text-emerald-400");
+      } else {
+        btnText.textContent = "Configurar API Key";
+        btnText.classList.remove("text-emerald-400");
+      }
+      checkButtonsState();
+    }
+
+    function checkButtonsState() {
+      const btnProcess = document.getElementById('btnProcessIa');
+      btnProcess.disabled = !(currentImage && state.apiKey);
+      document.getElementById('btnDownload').disabled = !currentImage;
+    }
+
+    // Carga de Archivos
+    function handleFileSelect(e) {
+      const file = e.target.files[0];
+      if (file) loadImageFromFile(file);
+    }
+
+    function setupDragAndDrop() {
+      const dropZone = document.getElementById('dropZone');
+      
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          dropZone.classList.add('border-yellow-400');
+        }, false);
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          dropZone.classList.remove('border-yellow-400');
+        }, false);
+      });
+
+      dropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files.length > 0) loadImageFromFile(files[0]);
+      });
+    }
+
+    function loadImageFromFile(file) {
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const img = new Image();
+        img.onload = function() {
+          currentImage = img;
+          processedImage = null; // Reiniciar imagen procesada
+          resetTransform();
+          document.getElementById('dropZone').classList.add('hidden');
+          checkButtonsState();
+          renderCanvas();
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Pestañas UI
+    function switchTab(tab) {
+      document.getElementById('contentIa').classList.toggle('hidden', tab !== 'ia');
+      document.getElementById('contentAjustes').classList.toggle('hidden', tab !== 'ajustes');
+      
+      const tabIa = document.getElementById('tabIa');
+      const tabAjustes = document.getElementById('tabAjustes');
+
+      if(tab === 'ia') {
+        tabIa.className = "flex-1 py-3 px-4 text-xs font-semibold text-yellow-400 border-b-2 border-yellow-400 flex items-center justify-center gap-2";
+        tabAjustes.className = "flex-1 py-3 px-4 text-xs font-semibold text-slate-400 border-b-2 border-transparent hover:text-slate-200 flex items-center justify-center gap-2";
+      } else {
+        tabAjustes.className = "flex-1 py-3 px-4 text-xs font-semibold text-yellow-400 border-b-2 border-yellow-400 flex items-center justify-center gap-2";
+        tabIa.className = "flex-1 py-3 px-4 text-xs font-semibold text-slate-400 border-b-2 border-transparent hover:text-slate-200 flex items-center justify-center gap-2";
+      }
+    }
+
+    function setBackgroundMode(mode) {
+      state.bgMode = mode;
+      document.getElementById('bgBtnWhite').className = mode === 'white' ? 
+        'py-2.5 px-3 rounded-lg bg-slate-800 border-2 border-yellow-400 text-xs font-semibold flex items-center gap-2 text-white' :
+        'py-2.5 px-3 rounded-lg bg-slate-800 border-2 border-transparent text-xs font-semibold flex items-center gap-2 text-slate-400';
+
+      document.getElementById('bgBtnTrans').className = mode === 'transparent' ? 
+        'py-2.5 px-3 rounded-lg bg-slate-800 border-2 border-yellow-400 text-xs font-semibold flex items-center gap-2 text-white' :
+        'py-2.5 px-3 rounded-lg bg-slate-800 border-2 border-transparent text-xs font-semibold flex items-center gap-2 text-slate-400';
+
+      renderCanvas();
+    }
+
+    function updateSliderVal(id, text) {
+      document.getElementById(id).innerText = text;
+    }
+
+    function autoFitML() {
+      state.scale = 0.85; // Margen de seguridad norma ML
+      state.posX = 0;
+      state.posY = 0;
+      document.getElementById('scale').value = 85;
+      updateSliderVal('scaleVal', '85%');
+      renderCanvas();
+    }
+
+    function resetTransform() {
+      state.scale = 0.8;
+      state.posX = 0;
+      state.posY = 0;
+      document.getElementById('scale').value = 80;
+      updateSliderVal('scaleVal', '80%');
+      renderCanvas();
+    }
+
+    // Interacción Canvas Arrastrar y Soltar Posición
+    function setupCanvasInteractions() {
+      canvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        startX = e.clientX - state.posX;
+        startY = e.clientY - state.posY;
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        state.posX = e.clientX - startX;
+        state.posY = e.clientY - startY;
+        renderCanvas();
+      });
+
+      window.addEventListener('mouseup', () => {
+        isDragging = false;
+      });
+
+      // Eventos táctiles para móviles
+      canvas.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          isDragging = true;
+          startX = e.touches[0].clientX - state.posX;
+          startY = e.touches[0].clientY - state.posY;
+        }
+      });
+
+      window.addEventListener('touchmove', (e) => {
+        if (!isDragging || e.touches.length !== 1) return;
+        state.posX = e.touches[0].clientX - startX;
+        state.posY = e.touches[0].clientY - startY;
+        renderCanvas();
+      });
+
+      window.addEventListener('touchend', () => {
+        isDragging = false;
+      });
+    }
+
+    // Motor de Renderizado del Canvas
+    function renderCanvas() {
+      if (!ctx) return;
+
+      // Obtener valores actualizados de los Sliders
+      state.brightness = document.getElementById('brightness').value;
+      state.contrast = document.getElementById('contrast').value;
+      state.saturate = document.getElementById('saturate').value;
+      state.scale = document.getElementById('scale').value / 100;
+      state.shadowEnabled = document.getElementById('shadowToggle').checked;
+      state.shadowOpacity = document.getElementById('shadowOpacity').value / 100;
+      state.shadowBlur = document.getElementById('shadowBlur').value;
+
+      // Limpiar Canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 1. Renderizar Fondo (Blanco Puro o Transparente)
+      if (state.bgMode === 'white') {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      const activeImg = processedImage || currentImage;
+      if (!activeImg) return;
+
+      // Cálculo de Dimensiones Escaladas conservando proporción
+      const aspect = activeImg.width / activeImg.height;
+      let drawW, drawH;
+      if (aspect > 1) {
+        drawW = canvas.width * state.scale;
+        drawH = drawW / aspect;
+      } else {
+        drawH = canvas.height * state.scale;
+        drawW = drawH * aspect;
+      }
+
+      // Centrado con offset manual del usuario
+      const drawX = (canvas.width - drawW) / 2 + state.posX;
+      const drawY = (canvas.height - drawH) / 2 + state.posY;
+
+      // 2. Renderizar Sombra de Base Realista si está activada
+      if (state.shadowEnabled) {
+        ctx.save();
+        ctx.beginPath();
+        const shadowX = canvas.width / 2 + state.posX;
+        const shadowY = drawY + drawH - 10;
+        const shadowRadiusX = drawW * 0.4;
+        const shadowRadiusY = drawH * 0.05;
+
+        ctx.ellipse(shadowX, shadowY, shadowRadiusX, shadowRadiusY, 0, 0, 2 * Math.PI);
+        ctx.fillStyle = `rgba(0, 0, 0, ${state.shadowOpacity})`;
+        ctx.filter = `blur(${state.shadowBlur}px)`;
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // 3. Renderizar Producto con Ajustes de Filtros de Luz
+      ctx.save();
+      ctx.filter = `brightness(${state.brightness}%) contrast(${state.contrast}%) saturate(${state.saturate}%)`;
+      ctx.drawImage(activeImg, drawX, drawY, drawW, drawH);
+      ctx.restore();
+    }
+
+    // Integración API de Gemini para la Remoción de Fondo con IA
+    async function processWithGemini() {
+      if (!currentImage) return;
+      if (!state.apiKey) {
+        openApiModal();
+        return;
+      }
+
+      const loader = document.getElementById('aiLoader');
+      loader.classList.remove('hidden');
+
+      try {
+        // Convertir la imagen actual a Base64 JPEG
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = currentImage.width;
+        tempCanvas.height = currentImage.height;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(currentImage, 0, 0);
+        const base64Data = tempCanvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+
+        // Prompt estructurado para aislamiento preciso de producto
+        const promptText = "Extract the main product from this image. Remove the background completely and return ONLY the product isolated on a pure transparent background. Maintain crisp edges and details.";
+
+        const payload = {
+          contents: [{
+            role: "user",
+            parts: [
+              { text: promptText },
+              {
+                inlineData: {
+                  mimeType: "image/jpeg",
+                  data: base64Data
+                }
+              }
+            ]
+          }],
+          generationConfig: {
+            responseModalities: ["IMAGE"]
+          }
+        };
+
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${state.apiKey}`;
+
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error en el servidor de Gemini: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        const outputPart = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+
+        if (!outputPart || !outputPart.inlineData) {
+          throw new Error("No se recibió el resultado procesado de la imagen.");
+        }
+
+        // Cargar imagen aislada procesada
+        const newImg = new Image();
+        newImg.onload = function() {
+          processedImage = newImg;
+          loader.classList.add('hidden');
+          renderCanvas();
+        };
+        newImg.src = `data:${outputPart.inlineData.mimeType};base64,${outputPart.inlineData.data}`;
+
+      } catch (err) {
+        console.error("Error en Remoción con Gemini:", err);
+        loader.classList.add('hidden');
+        alert("Ocurrió un error al procesar la imagen con Gemini. Revisa que tu API Key sea válida e inténtalo de nuevo.");
+      }
+    }
+
+    // Exportación Profesional de Imagen en 1200x1200px para Mercado Libre
+    function exportImage() {
+      if (!currentImage) return;
+
+      // Crear un canvas de resolución completa (1200x1200px)
+      const exportCanvas = document.createElement('canvas');
+      exportCanvas.width = 1200;
+      exportCanvas.height = 1200;
+      const expCtx = exportCanvas.getContext('2d');
+
+      // Transferir estado del lienzo visual
+      if (state.bgMode === 'white') {
+        expCtx.fillStyle = '#FFFFFF';
+        expCtx.fillRect(0, 0, 1200, 1200);
+      }
+
+      const activeImg = processedImage || currentImage;
+      const aspect = activeImg.width / activeImg.height;
+      let drawW, drawH;
+      if (aspect > 1) {
+        drawW = 1200 * state.scale;
+        drawH = drawW / aspect;
+      } else {
+        drawH = 1200 * state.scale;
+        drawW = drawH * aspect;
+      }
+
+      const drawX = (1200 - drawW) / 2 + state.posX;
+      const drawY = (1200 - drawH) / 2 + state.posY;
+
+      // Dibujar Sombra
+      if (state.shadowEnabled) {
+        expCtx.save();
+        expCtx.beginPath();
+        const shadowX = 1200 / 2 + state.posX;
+        const shadowY = drawY + drawH - 10;
+        const shadowRadiusX = drawW * 0.4;
+        const shadowRadiusY = drawH * 0.05;
+
+        expCtx.ellipse(shadowX, shadowY, shadowRadiusX, shadowRadiusY, 0, 0, 2 * Math.PI);
+        expCtx.fillStyle = `rgba(0, 0, 0, ${state.shadowOpacity})`;
+        expCtx.filter = `blur(${state.shadowBlur}px)`;
+        expCtx.fill();
+        expCtx.restore();
+      }
+
+      // Dibujar Imagen
+      expCtx.save();
+      expCtx.filter = `brightness(${state.brightness}%) contrast(${state.contrast}%) saturate(${state.saturate}%)`;
+      expCtx.drawImage(activeImg, drawX, drawY, drawW, drawH);
+      expCtx.restore();
+
+      // Generar descarga en formato JPEG de máxima calidad
+      const mimeType = state.bgMode === 'white' ? 'image/jpeg' : 'image/png';
+      const fileExt = state.bgMode === 'white' ? 'jpg' : 'png';
+      const dataUrl = exportCanvas.toDataURL(mimeType, 0.95);
+
+      const link = document.createElement('a');
+      link.download = `producto_mercadolibre_${Date.now()}.${fileExt}`;
+      link.href = dataUrl;
+      link.click();
+    }
+  </script>
+</body>
+</html>
