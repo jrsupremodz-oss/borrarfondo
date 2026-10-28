@@ -656,16 +656,29 @@
       loader.classList.remove('hidden');
 
       try {
-        // Convertir la imagen actual a Base64 JPEG
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = currentImage.width;
-        tempCanvas.height = currentImage.height;
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCtx.drawImage(currentImage, 0, 0);
-        const base64Data = tempCanvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+        // Redimensionar la imagen a un tamaño óptimo para no saturar el envío a la API (max 1024px)
+        const MAX_DIM = 1024;
+        let w = currentImage.width;
+        let h = currentImage.height;
+        if (w > MAX_DIM || h > MAX_DIM) {
+          if (w > h) {
+            h = Math.round((h * MAX_DIM) / w);
+            w = MAX_DIM;
+          } else {
+            w = Math.round((w * MAX_DIM) / h);
+            h = MAX_DIM;
+          }
+        }
 
-        // Prompt estructurado para aislamiento preciso de producto
-        const promptText = "Extract the main product from this image. Remove the background completely and return ONLY the product isolated on a pure transparent background. Maintain crisp edges and details.";
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = w;
+        tempCanvas.height = h;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(currentImage, 0, 0, w, h);
+        const base64Data = tempCanvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+
+        // Prompt para aislar producto en fondo blanco limpio
+        const promptText = "Isolated product photography on a clean white background. Remove all original background elements, shadows, and surroundings completely. Keep only the main product neatly centered with precise edges.";
 
         const payload = {
           contents: [{
@@ -685,6 +698,7 @@
           }
         };
 
+        // Probar modelo de generación de imagen de Gemini
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${state.apiKey}`;
 
         const response = await fetch(apiUrl, {
@@ -693,30 +707,54 @@
           body: JSON.stringify(payload)
         });
 
+        const result = await response.json();
+
         if (!response.ok) {
-          throw new Error(`Error en el servidor de Gemini: ${response.statusText}`);
+          const errorMsg = result?.error?.message || `Error ${response.status}: ${response.statusText}`;
+          throw new Error(errorMsg);
         }
 
-        const result = await response.json();
-        const outputPart = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+        const candidate = result?.candidates?.[0];
+        const outputPart = candidate?.content?.parts?.find(p => p.inlineData);
 
         if (!outputPart || !outputPart.inlineData) {
-          throw new Error("No se recibió el resultado procesado de la imagen.");
+          // Si el modelo devolvió texto en vez de imagen
+          const textPart = candidate?.content?.parts?.find(p => p.text);
+          if (textPart) {
+            throw new Error(`Gemini devolvió respuesta de texto: "${textPart.text.substring(0, 100)}..."`);
+          }
+          throw new Error("No se pudo obtener la imagen procesada de Gemini.");
         }
 
         // Cargar imagen aislada procesada
         const newImg = new Image();
+        newImg.crossOrigin = "anonymous";
         newImg.onload = function() {
           processedImage = newImg;
           loader.classList.add('hidden');
           renderCanvas();
         };
+        newImg.onerror = function() {
+          throw new Error("Error al renderizar el resultado devuelto por Gemini.");
+        };
         newImg.src = `data:${outputPart.inlineData.mimeType};base64,${outputPart.inlineData.data}`;
 
       } catch (err) {
-        console.error("Error en Remoción con Gemini:", err);
+        console.error("Error detallado de Gemini:", err);
         loader.classList.add('hidden');
-        alert("Ocurrió un error al procesar la imagen con Gemini. Revisa que tu API Key sea válida e inténtalo de nuevo.");
+        
+        // Mostrar mensaje detallado
+        const errorText = err.message || "Error desconocido al procesar la imagen.";
+        
+        // Modal / mensaje amigable pero con detalle técnico
+        let userFriendlyMsg = "Error al comunicarse con Gemini:\n\n" + errorText;
+        if (errorText.includes("API key not valid") || errorText.includes("API_KEY_INVALID")) {
+          userFriendlyMsg = "La API Key ingresada no es válida. Por favor, verifica tu clave de Google AI Studio en el menú superior.";
+        } else if (errorText.includes("quota") || errorText.includes("RESOURCE_EXHAUSTED")) {
+          userFriendlyMsg = "Has alcanzado el límite de solicitudes gratuitas de tu API Key de Gemini. Intenta de nuevo en unos minutos.";
+        }
+
+        alert(userFriendlyMsg);
       }
     }
 
