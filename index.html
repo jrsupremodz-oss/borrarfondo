@@ -100,17 +100,23 @@
         <canvas id="mainCanvas" class="max-w-full max-h-full object-contain cursor-grab active:cursor-grabbing"></canvas>
 
         <!-- Placeholder Inicial si no hay foto -->
-        <div id="dropZone" onclick="document.getElementById('fileInput').click()" class="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center p-6 text-center cursor-pointer hover:bg-slate-800/80 transition group border-2 border-dashed border-slate-700 hover:border-yellow-400/50">
+        <div id="dropZone" class="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center p-6 text-center group border-2 border-dashed border-slate-700 hover:border-yellow-400/50 transition">
           <div class="w-16 h-16 rounded-full bg-slate-800 group-hover:bg-yellow-400/10 flex items-center justify-center text-slate-400 group-hover:text-yellow-400 transition mb-4">
             <i class="fa-solid fa-cloud-arrow-up text-2xl"></i>
           </div>
           <h3 class="font-bold text-lg text-slate-200 group-hover:text-yellow-400 transition">Sube la foto de tu producto</h3>
-          <p class="text-sm text-slate-400 mt-1 max-w-xs">Arrastra aquí una imagen o haz clic para explorar en tu dispositivo</p>
-          <span class="mt-4 text-xs bg-slate-800 px-3 py-1 rounded-full text-slate-400 border border-slate-700">Formatos recomendados: JPG, PNG, WEBP</span>
+          <p class="text-sm text-slate-400 mt-1 max-w-xs mb-4">Arrastra aquí una imagen o presiona el botón para examinar tus archivos</p>
+          
+          <button onclick="document.getElementById('fileInput').click()" class="px-5 py-2.5 rounded-lg bg-yellow-400 hover:bg-yellow-300 text-slate-900 font-bold text-sm shadow-lg shadow-yellow-400/20 transition flex items-center gap-2">
+            <i class="fa-solid fa-image"></i>
+            <span>Seleccionar Imagen</span>
+          </button>
+
+          <span class="mt-4 text-xs bg-slate-800 px-3 py-1 rounded-full text-slate-400 border border-slate-700">Formatos: JPG, PNG, WEBP</span>
         </div>
       </div>
 
-      <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleFileSelect(event)">
+      <input type="file" id="fileInput" accept="image/png, image/jpeg, image/webp, image/*" class="hidden" onchange="handleFileSelect(event)">
     </main>
 
     <!-- Panel Lateral de Herramientas y Ajustes -->
@@ -444,8 +450,12 @@
 
     // Carga de Archivos
     function handleFileSelect(e) {
-      const file = e.target.files[0];
-      if (file) loadImageFromFile(file);
+      const file = e.target.files && e.target.files[0];
+      if (file) {
+        loadImageFromFile(file);
+      }
+      // Limpiar input para permitir re-seleccionar la misma imagen si fuera necesario
+      e.target.value = '';
     }
 
     function setupDragAndDrop() {
@@ -454,25 +464,34 @@
       ['dragenter', 'dragover'].forEach(eventName => {
         dropZone.addEventListener(eventName, (e) => {
           e.preventDefault();
-          dropZone.classList.add('border-yellow-400');
+          e.stopPropagation();
+          dropZone.classList.add('border-yellow-400', 'bg-slate-800/80');
         }, false);
       });
 
       ['dragleave', 'drop'].forEach(eventName => {
         dropZone.addEventListener(eventName, (e) => {
           e.preventDefault();
-          dropZone.classList.remove('border-yellow-400');
+          e.stopPropagation();
+          dropZone.classList.remove('border-yellow-400', 'bg-slate-800/80');
         }, false);
       });
 
       dropZone.addEventListener('drop', (e) => {
         const dt = e.dataTransfer;
         const files = dt.files;
-        if (files.length > 0) loadImageFromFile(files[0]);
+        if (files && files.length > 0) {
+          loadImageFromFile(files[0]);
+        }
       });
     }
 
     function loadImageFromFile(file) {
+      if (!file.type.startsWith('image/')) {
+        alert('Por favor, selecciona un archivo de imagen válido (JPG, PNG, WEBP).');
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = function(event) {
         const img = new Image();
@@ -483,6 +502,9 @@
           document.getElementById('dropZone').classList.add('hidden');
           checkButtonsState();
           renderCanvas();
+        };
+        img.onerror = function() {
+          alert('No se pudo cargar la imagen elegida. Intenta con otra imagen o formato.');
         };
         img.src = event.target.result;
       };
